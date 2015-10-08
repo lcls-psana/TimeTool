@@ -1,5 +1,6 @@
-from Options import AnalyzeOptions
+from AnalyzeOptions import AnalyzeOptions
 from _TimeTool import *
+
 PyAnalyze.__doc__ = '''
 Python interface to the TimeTool.Analyze C++ Psana module
 to allow conditional execution.
