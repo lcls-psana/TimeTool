@@ -1,16 +1,20 @@
+import sys
 import os
 import unittest
 import psana
+import TimeTool
+import gc
 
 class Analyze(unittest.TestCase):
     def setUp(self):
         self.longMessage = True
         DATADIR = '/reg/g/psdm/data_test/multifile/test_014_sxri0214'
         assert os.path.exists(DATADIR), "testing datadir=%s doesn't exist" % DATADIR
-        self.datasource = 'exp=sxri0214:run=158:dir=%s' % DATADIR 
+        self.datasource = 'exp=sxri0214:run=158:dir=%s:smd' % DATADIR 
 
         self.EVR_BYKICK = 162
         self.TT_PUTKEY = 'TTANA'
+        psana.setConfigFile("")
         self.psanaOptions = {
             ########## psana configuration #################
             'psana.modules':'TimeTool.Analyze',
@@ -57,27 +61,11 @@ class Analyze(unittest.TestCase):
             'TimeTool.Analyze.weights':'0.00940119 -0.00359135 -0.01681714 -0.03046231 -0.04553042 -0.06090473 -0.07645332 -0.09188818 -0.10765874 -0.1158105  -0.10755824 -0.09916765 -0.09032289 -0.08058788 -0.0705904  -0.06022352 -0.05040479 -0.04144206 -0.03426838 -0.02688114 -0.0215419  -0.01685951 -0.01215143 -0.00853327 -0.00563934 -0.00109415  0.00262359  0.00584445  0.00910484  0.01416929  0.0184887   0.02284319  0.02976289  0.03677404  0.04431778  0.05415214  0.06436626  0.07429347  0.08364909  0.09269116  0.10163601  0.10940983  0.10899065  0.10079016  0.08416471  0.06855799  0.05286105  0.03735241  0.02294275  0.00853613',
         }
         
-    @unittest.skip("interactive plotting example")
-    def test_plot(self):
-        psana.setConfigFile("")
-        self.psanaOptions['TimeTool.Analyze.eventdump']=True
-        self.psanaOptions['psana.modules'] += ' TimeTool.PlotAnalyze'
-        psana.setOptions(self.psanaOptions)
-        ds = psana.DataSource(self.datasource)
-        self.runThroughDataSourceAndCheckAnswers(ds)
-
-    def test_basic(self):
-        psana.setConfigFile("")
-        psana.setOptions(self.psanaOptions)
-        ds = psana.DataSource(self.datasource)
-        # below we record the timetool answers we saw when writing this test. The key is an event index. If there is no key, then the
-        # time tool produced no result (for events 0-16 and event 18. If psalg or the TimeTool changes, it is reaonsable that these 
-        # values will change, in which case the test should be modified. To modify the test, the line that prints these dictionaries
-        # is commented out in the test below
-        self.runThroughDataSourceAndCheckAnswers(ds)
-
-    def runThroughDataSourceAndCheckAnswers(self,ds):
-        timeToolAnswers = {
+        ##########
+        ## if one needs to regenerate these answers because the algorithm in TimeTool.Analyze 
+        ## has changed, or one is using different config parameters, uncomment the print 
+        ## statement in the checkAnwers function below, it generates lines you can paste in here
+        self.timeToolAnswers = {
             17:{'amplitude':0.0098, 'nxt_amplitude':0.0049, 'position_fwhm':21.0986, 'ref_amplitude':525459.00, 'position_pixel':288.04},
             19:{'amplitude':0.0054, 'nxt_amplitude':0.0026, 'position_fwhm':30.0244, 'ref_amplitude':507888.00, 'position_pixel':352.72},
             20:{'amplitude':0.0065, 'nxt_amplitude':0.0034, 'position_fwhm':31.4669, 'ref_amplitude':487428.00, 'position_pixel':370.91},
@@ -98,18 +86,171 @@ class Analyze(unittest.TestCase):
             35:{'amplitude':0.0254, 'nxt_amplitude':0.0235, 'position_fwhm':24.9222, 'ref_amplitude':509830.00, 'position_pixel':343.82},
         }
 
+    def tearDown(self):
+        # make sure options set from one test don't carry over into
+        # the next test - (in particular, the loading of the 
+        # TimeTool.Analyze module
+        for key, val in self.psanaOptions.iteritems():
+            psana.setOption(key,'')
+
+    @unittest.skip("interactive plotting example")
+    def test_plot(self):
+        psana.setConfigFile("")
+        self.psanaOptions['TimeTool.Analyze.eventdump']=True
+        self.psanaOptions['psana.modules'] += ' TimeTool.PlotAnalyze'
+        psana.setOptions(self.psanaOptions)
+        ds = psana.DataSource(self.datasource)
+        self.runThroughDataSourceAndCheckAnswers(ds)
+
+    def test_basic(self):
+        psana.setOptions(self.psanaOptions)
+        ds = psana.DataSource(self.datasource)
+        # below we record the timetool answers we saw when writing this test. 
+        # The key is an event index. If there is no key, then the
+        # time tool produced no result (for events 0-16 and event 18. 
+        # If psalg or the TimeTool changes, it is reaonsable that these 
+        # values will change, in which case the test should be modified. 
+        # To modify the test, the line that prints these dictionaries
+        # is commented out in the test below
+        idx2ttData = self.runThroughDataOldStyle(ds)
+        self.checkAnswers(idx2ttData)
+
+    def test_basicPyxfaceUse(self):
+        ttOptions = TimeTool.AnalyzeOptions(get_key='TSS_OPAL',
+                                            eventcode_nobeam = self.EVR_BYKICK,
+                                            ref_avg_fraction = 1.0,
+                                            sig_roi_y = '408 920')
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource, module=ttAnalyze)
+
+        idx2ttData = {}
+        for evtIdx, evt in enumerate(ds.events()):
+            ttResults = ttAnalyze.process(evt)
+            idx2ttData[evtIdx]=ttResults
+
+        self.checkAnswers(idx2ttData)
+
+    def test_PyxfaceCantPassListMustPassString(self):
+        self.assertRaises(AssertionError, TimeTool.AnalyzeOptions, sig_roi_x=[0, 1023])
+
+    def test_PyxfaceMustInitProperlyToCallControlLogic(self):
+        ttOptions = TimeTool.AnalyzeOptions()
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource, module=ttAnalyze)
+        evt = ds.events().next()
+        self.assertRaises(RuntimeError, TimeTool.PyAnalyze.controlLogic, ttAnalyze, evt, True, False)
+
+    def test_PyxfaceImproperDatasourceConstruction(self):
+        ttOptions = TimeTool.AnalyzeOptions()
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource)
+        evt = ds.events().next()
+        self.assertRaises(RuntimeError, TimeTool.PyAnalyze.process, ttAnalyze, evt)
+
+    def test_PyxfaceProcessTwice(self):
+        ttOptions = TimeTool.AnalyzeOptions(eventcode_nobeam=self.EVR_BYKICK)
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource, module=ttAnalyze)
+        for evt in ds.events():
+            ttResult = ttAnalyze.process(evt)
+            if ttResult is not None:
+                ttResult2 = ttAnalyze.process(evt)
+                break
+
+    def test_PyxfaceIsRefShot(self):
+        '''pertend to be a rank that would skip the reference shots at 16 and 18,
+        but process if isRefShot is true.
+        '''
+        ttOptions = TimeTool.AnalyzeOptions(get_key='TSS_OPAL',
+                                            eventcode_nobeam = self.EVR_BYKICK,
+                                            ref_avg_fraction = 1.0,
+                                            sig_roi_y = '408 920')
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource, module=ttAnalyze)
+
+        idx2ttData = {}
+        for idx, evt in enumerate(ds.events()):
+            if ttAnalyze.isRefShot(evt): ttAnalyze.process(evt)
+            if idx % 2 == 0: continue
+            idx2ttData[idx] = ttAnalyze.process(evt)
+
+        self.checkAnswers(idx2ttData)
+
+    def test_PyxfaceTestDataNeedsBothRef(self):
+        '''reference comes from two shots in the test data. idx=16 and idx=18.
+        make sure that if we don't process one of the reference shots, we get
+        the wrong answer.
+        '''
+        ttOptions = TimeTool.AnalyzeOptions(get_key='TSS_OPAL',
+                                            eventcode_nobeam = self.EVR_BYKICK,
+                                            ref_avg_fraction = 1.0,
+                                            sig_roi_y = '408 920')
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource, module=ttAnalyze)
+
+        idx2ttData = {}
+        for idx, evt in enumerate(ds.events()):
+            # build reference from first ref shot (idx=16, but not the second, 18)
+            if idx == 18: continue
+            idx2ttData[idx] = ttAnalyze.process(evt)
+            if idx > 19: break
+        # make sure that answers after second ref are wrong
+        diffFromAnswer = abs(idx2ttData[19].amplitude() - self.timeToolAnswers[19]['amplitude'])
+        self.assertGreater(diffFromAnswer, 0.0001)
+
+    def test_PyxfaceControlLogic(self):
+        ttOptions = TimeTool.AnalyzeOptions(get_key='TSS_OPAL',
+                                            eventcode_nobeam = self.EVR_BYKICK,
+                                            ref_avg_fraction = 1.0,
+                                            sig_roi_y = '408 920',
+                                            controlLogic=True)
+        ttAnalyze = TimeTool.PyAnalyze(ttOptions)
+        ds = psana.DataSource(self.datasource, module=ttAnalyze)
+
+        idx2ttData = {}
+        for evtIdx, evt in enumerate(ds.events()):
+            evrData = evt.get(psana.EvrData.DataV3, psana.Source("DetInfo(:Evr)"))
+            assert evrData is not None
+            laserOn = True
+            beamOn = not any([fifo.eventCode()==self.EVR_BYKICK for fifo in  evrData.fifoEvents()])
+            ttAnalyze.controlLogic(evt, laserOn, beamOn)
+            ttResults = ttAnalyze.process(evt)
+            idx2ttData[evtIdx]=ttResults
+        self.checkAnswers(idx2ttData)
+
+    def runThroughDataOldStyle(self, ds):
+        '''Use for tests with the old style C++ Psana Module - TimeTool.Analyze, 
+        this runs through the events and gets the TimeTool.DataV2. It returns a 
+        dictionary: keys are event index, values are result of get (may be None, or 
+        valid DataV2)
+        '''
+        results = {}
         for idx,evt in enumerate(ds.events()):
             ttData = evt.get(psana.TimeTool.DataV2, self.TT_PUTKEY)
-            if idx not in timeToolAnswers:
+            results[idx] = ttData
+        return results
+
+    def checkAnswers(self, idx2ttResult):
+        evtIdxList = idx2ttResult.keys()
+        evtIdxList.sort()
+
+        for idx in evtIdxList:
+            ttData = idx2ttResult[idx]
+            if idx not in self.timeToolAnswers:
                 self.assertIsNone(ttData, msg="idx=%d. TimeTool produced answer but we did not expect one" % idx)
                 continue
             self.assertIsNotNone(ttData, msg="idx=%d. TimeTool produced no answer but expect one" % idx)
-            answers = timeToolAnswers[idx]
+            answers = self.timeToolAnswers[idx]
             self.assertAlmostEqual(answers['amplitude'], ttData.amplitude(), places=3, msg="event=%d amplitudes" % idx)
             self.assertAlmostEqual(answers['nxt_amplitude'], ttData.nxt_amplitude(), places=3, msg="event=%d nxt_amplitudes" % idx)
             self.assertAlmostEqual(answers['position_fwhm'], ttData.position_fwhm(), places=1, msg="event=%d aposition_fwhm" % idx)
             self.assertAlmostEqual(answers['ref_amplitude'], ttData.ref_amplitude(), places=0, msg="event=%d ref_amplitudes" % idx)
             self.assertAlmostEqual(answers['position_pixel'], ttData.position_pixel(), places=0, msg="event=%d position_pixel" % idx)
+#           ###############
+#           ## if one needs to re-generate
 #            print "%d:{'amplitude':%.4f, 'nxt_amplitude':%.4f, 'position_fwhm':%.4f, 'ref_amplitude':%.2f, 'position_pixel':%.2f}," % \
 #                (idx,ttData.amplitude(), ttData.nxt_amplitude(), ttData.position_fwhm(), ttData.ref_amplitude(), ttData.position_pixel())
+        
             
+if __name__ == "__main__":
+    unittest.main(argv=[sys.argv[0],'-v'])

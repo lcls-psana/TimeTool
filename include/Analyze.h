@@ -76,6 +76,10 @@ public:
   /// Method which is called with event data, this is the only required 
   /// method, all other methods are optional
   virtual void event(Event& evt, Env& env);
+
+  /// returns true if this is a reference shot (nobeam, yes laser) 
+  /// does not update reference, call event for full processing
+  bool isRefShot(Event & evt);
   
   /// Method which is called at the end of the calibration cycle
   virtual void endCalibCycle(Event& evt, Env& env);
@@ -87,6 +91,12 @@ public:
   virtual void endJob(Event& evt, Env& env);
 
 protected:
+  // event helpers
+  bool use_ref_roi() { return (m_ref_roi_lo[0]!=m_ref_roi_hi[0]); }
+  bool use_sb_roi() { return (m_sb_roi_lo [0]!=m_sb_roi_hi [0]); }
+
+  bool setBeamAndLaserStatusForEvent(bool &nobeam, bool &nolaser, Event &evt);
+  void updateBeamStatusBasedOnIpm(bool &nobeam, Event &evt);
 
   /// helper function returns true if 'key' have value 'off'. Checks m_get_key source
   /// first, then no source. Throws fatal error if key is not found or doesn't have value
@@ -155,7 +165,7 @@ private:
 
   bool m_use_calib_db_ref; // load initial reference from calibration;
   ndarray<double,2> m_ref_frame_avg; // initial pedestal loaded, then updated if plotting with eventdump
-  bool setInitialReferenceIfUsingCalibirationDatabase(bool use_ref_roi, unsigned pdim);
+  bool setInitialReferenceIfUsingCalibirationDatabase(unsigned pdim);
 
   unsigned m_pedestal;
 

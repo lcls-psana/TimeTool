@@ -3,6 +3,7 @@
 #include "TimeTool/EventDump.h"
 
 #include "ndarray/ndarray.h"
+#include "PSEvt/Exceptions.h"
 
 using namespace TimeTool;
 
@@ -23,7 +24,10 @@ void EventDump::laserBeamStatus(bool nobeam, bool nolaser, PSEvt::Event &evt)
   boost::shared_ptr<ndarray<int8_t,1> > data = boost::make_shared< ndarray<int8_t,1> >(shape);
   (*data)[0]=nobeam;
   (*data)[1]=nolaser;
-  evt.put(data, m_keyPrefix + "_nobeam_nolaser");
+  try {
+    evt.put(data, m_keyPrefix + "_nobeam_nolaser");
+  } catch (PSEvt::ExceptionDuplicateKey &) {
+  }
 }
 
 void EventDump::frameRef(const ndarray<double, 2> &arr, PSEvt::Event &evt) {
@@ -55,6 +59,9 @@ void EventDump::arrayROI(const unsigned roi_lo[2], const unsigned roi_hi[2], uns
 
 void EventDump::returnReason(PSEvt::Event &evt, const std::string &reason) {
   if (not m_doDump) return;
-  evt.put(boost::shared_ptr<std::string>(new std::string(reason)), m_keyPrefix + "_return");
+  try {
+    evt.put(boost::shared_ptr<std::string>(new std::string(reason)), m_keyPrefix + "_return");
+  } catch (PSEvt::ExceptionDuplicateKey &) {
+  };
 }
 

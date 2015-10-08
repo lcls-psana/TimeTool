@@ -704,10 +704,8 @@ bool Analyze::getIsOffFromOnOffKey(const std::string & moduleParameter, const st
   return isOff;
 }
 
-/// Method which is called with event data, this is the only required 
-/// method, all other methods are optional
-void 
-Analyze::event(Event& evt, Env& env)
+bool 
+Analyze::setBeamAndLaserStatusForEvent(bool &nobeam, bool &nolaser, Event &evt) 
 {
   shared_ptr<Psana::EvrData::DataV4> evr4 = evt.get(Source("DetInfo(:Evr)"));
   shared_ptr<Psana::EvrData::DataV3> evr3;
@@ -715,15 +713,12 @@ Analyze::event(Event& evt, Env& env)
   if (not(evr3 or evr4)) {
     MsgLog(name(), warning, name() << ": Could not fetch evr data - tried DataV3 and DataV4.");
     m_eventDump.returnReason(evt,"no_evr_data");
-    return;
+    return false;
   }
 
   ndarray<const Psana::EvrData::FIFOEvent,1> fifoEvents =  \
     evr4 ? evr4->fifoEvents() : evr3->fifoEvents();
 
-  bool nobeam;
-  bool nolaser;
-  
   if (m_beam_on_off_key.length()>0) {
     nobeam = getIsOffFromOnOffKey("beam_on_off_key", 
                                   m_beam_on_off_key, evt);
@@ -750,12 +745,14 @@ Analyze::event(Event& evt, Env& env)
 
   if (nolaser) {
     m_eventDump.returnReason(evt,"no_laser");
-    return;
+    return false;
   }
+  return true;
+}
 
-  bool use_sb_roi  = (m_sb_roi_lo [0]!=m_sb_roi_hi [0]);
-  bool use_ref_roi = (m_ref_roi_lo[0]!=m_ref_roi_hi[0]);
 
+void 
+Analyze::updateBeamStatusBasedOnIpm(bool &nobeam, Event &evt) {
   //
   //  Beam is absent if not enough signal on the IPM detector
   //
@@ -778,6 +775,26 @@ Analyze::event(Event& evt, Env& env)
       }
     }
   }
+}
+
+bool
+Analyze::isRefShot(Event &evt) {
+  bool nobeam, nolaser;
+  if (not setBeamAndLaserStatusForEvent(nobeam, nolaser, evt)) return false;
+  updateBeamStatusBasedOnIpm(nobeam, evt);
+  if ((not nolaser) and (nobeam)) return true;
+  return false;
+}
+
+
+/// Method which is called with event data, this is the only required 
+/// method, all other methods are optional
+void 
+Analyze::event(Event& evt, Env& env)
+{
+  bool nobeam, nolaser;
+  if (not setBeamAndLaserStatusForEvent(nobeam, nolaser, evt)) return;
+  updateBeamStatusBasedOnIpm(nobeam, evt);
 
   ndarray<const int32_t,1> sig;
   ndarray<const int32_t,1> sb;
@@ -871,7 +888,7 @@ Analyze::event(Event& evt, Env& env)
     //
     //  Calculate sideband correction
     //
-    if (use_sb_roi) {
+    if (use_sb_roi()) {
       m_eventDump.arrayROI(m_sb_roi_lo, m_sb_roi_hi, pdim, "_sb", evt);
       sb = psalg::project(frameData, 
                           m_sb_roi_lo , 
@@ -883,7 +900,7 @@ Analyze::event(Event& evt, Env& env)
     //
     //  Calculate reference correction
     //
-    if (use_ref_roi) {
+    if (use_ref_roi()) {
       m_eventDump.arrayROI(m_ref_roi_lo, m_ref_roi_hi, pdim, "_ref", evt);
       ref = psalg::project(frameData, 
                            m_ref_roi_lo , 
@@ -905,7 +922,7 @@ Analyze::event(Event& evt, Env& env)
     ndarray<const double,1> sbc = psalg::commonModeLROE(sb, m_sb_avg);
     m_eventDump.array(sbc, evt, "_sb_commonMode");
 
-    if (use_ref_roi)
+    if (use_ref_roi())
       for(unsigned i=0; i<sig.shape()[0]; i++) {
         sigd[i] = double(sig[i])-sbc[i];
         refd[i] = double(ref[i])-sbc[i];
@@ -915,7 +932,7 @@ Analyze::event(Event& evt, Env& env)
         sigd[i] = double(sig[i])-sbc[i];
   }
   else {
-    if (use_ref_roi)
+    if (use_ref_roi())
       for(unsigned i=0; i<sig.shape()[0]; i++) {
         sigd[i] = double(sig[i]);
         refd[i] = double(ref[i]);
@@ -939,7 +956,7 @@ Analyze::event(Event& evt, Env& env)
     return;
   }
 
-  bool setInitial = setInitialReferenceIfUsingCalibirationDatabase(use_ref_roi, pdim);
+  bool setInitial = setInitialReferenceIfUsingCalibirationDatabase(pdim);
   if (setInitial and !nobeam) {
     // Below we dump the ref_frame_avg when there is nobeam. 
     // Here we dump if beam and it was just set.
@@ -948,13 +965,13 @@ Analyze::event(Event& evt, Env& env)
 
   if (nobeam) {
     MsgLog(name(), trace, name() << ": Updating reference.");
-    psalg::rolling_average(ndarray<const double,1>(use_ref_roi? refd:sigd),
+    psalg::rolling_average(ndarray<const double,1>(use_ref_roi()? refd:sigd),
                            m_ref_avg, m_ref_avg_fraction);
 
     if (m_eventDump.doDump()) {
       local_rolling_average(frameData, m_ref_frame_avg, m_ref_avg_fraction, name());
       m_eventDump.frameRef(m_ref_frame_avg, evt);
-      m_eventDump.array(use_ref_roi?refd:sigd, evt, "_ref");
+      m_eventDump.array(use_ref_roi()?refd:sigd, evt, "_ref");
     }
     //
     //  If we are analyzing one event against all references,
@@ -971,7 +988,7 @@ Analyze::event(Event& evt, Env& env)
       return;
     }
   }
-  else if (use_ref_roi) {
+  else if (use_ref_roi()) {
     psalg::rolling_average(ndarray<const double,1>(refd),
                            m_ref_avg, m_ref_avg_fraction);
   }
@@ -1080,10 +1097,10 @@ Analyze::event(Event& evt, Env& env)
 }
 
 bool 
-Analyze::setInitialReferenceIfUsingCalibirationDatabase(bool use_ref_roi, unsigned pdim) {
+Analyze::setInitialReferenceIfUsingCalibirationDatabase(unsigned pdim) {
   if (not m_use_calib_db_ref) return false;
   if (0 != m_ref_avg.size()) return false;
-  if (use_ref_roi) {
+  if (use_ref_roi()) {
     MsgLog(name(), warning, name() << ": use_ref_roi is set, and use_calib_db_ref is true. not implemented");
     return false;
   }

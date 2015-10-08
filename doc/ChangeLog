@@ -11,6 +11,10 @@ Package author: Matthew J. Weaver
 Please describe any modifications that you made to the package in the
 reverse time order.
 
+Tag: V00-03-06
+2015-10-8 David Schneider
+- python interface allowing conditional execution, JIRA PSAS-189
+
 Tag: V00-03-05
 2015-7-12 David Schneider
 - allow default option for ref_load, JIRA PSAS-168
