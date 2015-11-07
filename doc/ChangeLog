@@ -11,6 +11,12 @@ Package author: Matthew J. Weaver
 Please describe any modifications that you made to the package in the
 reverse time order.
 
+Tag: V00-03-08
+2015-11-6 Igor Gaponenko, Christopher O'Grady
+- move AnalyzePyProxy from src/ to pyext/ to remove boost_python
+  dependency from libTimeTool.so (which was crashing the
+  c++ module-load dlopen because it wasn't linking to libpython27).
+
 Tag: V00-03-07
 2015-10-8 David Schneider
 - change name of Options.py to AnalyzeOptions.py, JIRA PSAS-189
