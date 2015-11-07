@@ -11,6 +11,10 @@ Package author: Matthew J. Weaver
 Please describe any modifications that you made to the package in the
 reverse time order.
 
+Tag: V00-03-09
+2015-11-6 Christopher O'Grady
+- Fix include AnalyzePyProxy statement bug in pyext/init.cpp
+
 Tag: V00-03-08
 2015-11-6 Igor Gaponenko, Christopher O'Grady
 - move AnalyzePyProxy from src/ to pyext/ to remove boost_python

@@ -1,6 +1,6 @@
 #include <boost/python.hpp>
 #include <iostream>
-#include "TimeTool/AnalyzePyProxy.h"
+#include "AnalyzePyProxy.h"
 
 using namespace TimeTool;
 
