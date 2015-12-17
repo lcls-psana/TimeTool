@@ -362,6 +362,9 @@ Analyze::Analyze (const std::string& name)
       MsgLog(name, fatal, name << ": ref_load and use_calib_db_ref confict, both are set.");
     }
     std::ifstream s(ref_load.c_str());
+    if (not s) {
+      MsgLog(name, fatal, "Could not open reference file: " << ref_load);
+    }
     std::vector<double> ref;
     while(s.good()) {
       double v;
