@@ -11,6 +11,10 @@ Package author: Matthew J. Weaver
 Please describe any modifications that you made to the package in the
 reverse time order.
 
+Tag: V00-03-11
+2016-11-23 David Schneider
+- add example of controlling the beam logic
+	
 Tag: V00-03-10
 2015-12-16 David Schneider
 - Fatally exist if filename in ref_load argument cannot be opened.
