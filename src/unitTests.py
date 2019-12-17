@@ -137,14 +137,14 @@ class Analyze(unittest.TestCase):
         ttOptions = TimeTool.AnalyzeOptions()
         ttAnalyze = TimeTool.PyAnalyze(ttOptions)
         ds = psana.DataSource(self.datasource, module=ttAnalyze)
-        evt = ds.events().next()
+        evt = next(ds.events())
         self.assertRaises(RuntimeError, TimeTool.PyAnalyze.controlLogic, ttAnalyze, evt, True, False)
 
     def test_PyxfaceImproperDatasourceConstruction(self):
         ttOptions = TimeTool.AnalyzeOptions()
         ttAnalyze = TimeTool.PyAnalyze(ttOptions)
         ds = psana.DataSource(self.datasource)
-        evt = ds.events().next()
+        evt = next(ds.events())
         self.assertRaises(RuntimeError, TimeTool.PyAnalyze.process, ttAnalyze, evt)
 
     def test_PyxfaceProcessTwice(self):

@@ -1,4 +1,5 @@
-from AnalyzeOptions import AnalyzeOptions
+from __future__ import absolute_import
+from .AnalyzeOptions import AnalyzeOptions
 from _TimeTool import *
 
 PyAnalyze.__doc__ = '''
