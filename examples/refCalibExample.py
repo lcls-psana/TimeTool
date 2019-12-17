@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import argparse
 import psana
@@ -78,8 +79,8 @@ def refCalibExample(datasource,
             break
         ttdata = evt.get(psana.TimeTool.DataV2, TIMETOOL_PUT_KEY)
         if ttdata is not None:
-            print "event %4d has TimeTool results. Peak is at pixel_position=%6.1f with amplitude=%7.5f nxt_amplitude=%7.5f fwhm=%5.1f" % \
-                (idx, ttdata.position_pixel(), ttdata.amplitude(), ttdata.nxt_amplitude(), ttdata.position_fwhm())
+            print("event %4d has TimeTool results. Peak is at pixel_position=%6.1f with amplitude=%7.5f nxt_amplitude=%7.5f fwhm=%5.1f" % \
+                (idx, ttdata.position_pixel(), ttdata.amplitude(), ttdata.nxt_amplitude(), ttdata.position_fwhm()))
 
 
 programDescription = '''
@@ -101,8 +102,8 @@ if __name__ == '__main__':
     assert args.datasource is not None, "You must provide a psana datasource with the '-d' option. For example: exp=sxrd5814:run=150"
 
     if os.environ.get('MSGLOGCONFIG','').find('TimeTool.Analyze')<0:
-        print "Consider setting the environment variable "+\
-            "MSGLOGCONFIG to TimeTool.Analyze=debug before running this script to get more diagnostic messages from the TimeTool."
+        print("Consider setting the environment variable "+\
+            "MSGLOGCONFIG to TimeTool.Analyze=debug before running this script to get more diagnostic messages from the TimeTool.")
     
     refCalibExample(datasource=args.datasource, 
                     numEvents=args.numevents,

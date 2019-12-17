@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import os
 import psana
@@ -24,13 +25,13 @@ ds = psana.DataSource('exp=sxrd5814:run=150', module=ttAnalyze)
 for idx, evt in enumerate(ds.events()):
     if (numevents > 0) and (idx >= numevents): break
     if ttAnalyze.isRefShot(evt): 
-        print "is ref shot"
+        print("is ref shot")
         ttAnalyze.process(evt)
     if idx % worldsize != rank: 
         continue
     ttdata = ttAnalyze.process(evt)
     if ttdata is None: continue
-    print "rank=%3d event %4d has TimeTool results. Peak is at pixel_position=%6.1f with amplitude=%7.5f nxt_amplitude=%7.5f fwhm=%5.1f" % \
-                (rank, idx, ttdata.position_pixel(), ttdata.amplitude(), ttdata.nxt_amplitude(), ttdata.position_fwhm())
+    print("rank=%3d event %4d has TimeTool results. Peak is at pixel_position=%6.1f with amplitude=%7.5f nxt_amplitude=%7.5f fwhm=%5.1f" % \
+                (rank, idx, ttdata.position_pixel(), ttdata.amplitude(), ttdata.nxt_amplitude(), ttdata.position_fwhm()))
     
 
