@@ -1,3 +1,4 @@
+from builtins import input
 import psana
 import sys
 import numpy as np
@@ -175,4 +176,4 @@ class PlotAnalyze(object):
         plt.draw()
 
         if self.pause:
-            raw_input("hit enter to continue: ")
+            input("hit enter to continue: ")

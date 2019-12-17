@@ -90,7 +90,7 @@ class Analyze(unittest.TestCase):
         # make sure options set from one test don't carry over into
         # the next test - (in particular, the loading of the 
         # TimeTool.Analyze module
-        for key, val in self.psanaOptions.iteritems():
+        for key, val in self.psanaOptions.items():
             psana.setOption(key,'')
 
     @unittest.skip("interactive plotting example")
@@ -231,7 +231,7 @@ class Analyze(unittest.TestCase):
         return results
 
     def checkAnswers(self, idx2ttResult):
-        evtIdxList = idx2ttResult.keys()
+        evtIdxList = list(idx2ttResult.keys())
         evtIdxList.sort()
 
         for idx in evtIdxList:

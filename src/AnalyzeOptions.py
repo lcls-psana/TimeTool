@@ -182,7 +182,7 @@ class AnalyzeOptions(object):
         if not self.controlLogic:
             self.argname2defvalue['beam_on_off_key']=''
             self.argname2defvalue['laser_on_off_key']=''
-        for argname, defvalue in self.argname2defvalue.iteritems():
+        for argname, defvalue in self.argname2defvalue.items():
             givenvalue = kwargs.pop(argname, defvalue)
             assert isinstance(givenvalue, type(defvalue)), "arg=%s has type=%r which is different than %r. Default value is %r" % \
                 (argname, type(givenvalue), type(defvalue), defvalue)
@@ -191,7 +191,7 @@ class AnalyzeOptions(object):
             setattr(self,argname,givenvalue)
             psana.setOption(self.psanaName + '.' + argname, givenvalue)
 
-        assert len(kwargs)==0, "There are unexpected keyword arguments: %r" % kwargs.keys()
+        assert len(kwargs)==0, "There are unexpected keyword arguments: %r" % list(kwargs.keys())
 
     def get_psanaName(self):
         return self.psanaName
