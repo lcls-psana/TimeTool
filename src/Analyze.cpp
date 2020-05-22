@@ -450,7 +450,7 @@ Analyze::beginJob(Event& evt, Env& env)
     }
   }
     
-  shared_ptr<Psana::TimeTool::ConfigV2> c = 
+  boost::shared_ptr<Psana::TimeTool::ConfigV2> c = 
     env.configStore().get(m_get_key);
   if (c.get()) {
     const Psana::TimeTool::ConfigV2& config = *c.get();
@@ -502,7 +502,7 @@ Analyze::beginJob(Event& evt, Env& env)
     }
   }
   else {
-    shared_ptr<Psana::TimeTool::ConfigV1> c = 
+    boost::shared_ptr<Psana::TimeTool::ConfigV1> c = 
       env.configStore().get(m_get_key);
     if (c.get()) {
       const Psana::TimeTool::ConfigV1& config = *c.get();
@@ -563,7 +563,7 @@ Analyze::beginJob(Event& evt, Env& env)
            name() << ": no laser_logic configuration given.  Assume laser is always T");
 
   {
-    shared_ptr<Psana::Camera::FrameFexConfigV1> config = 
+    boost::shared_ptr<Psana::Camera::FrameFexConfigV1> config = 
       env.configStore().get(m_get_key);
     if (config.get() && 
         config->forwarding()==Psana::Camera::FrameFexConfigV1::RegionOfInterest) {
@@ -625,7 +625,7 @@ Analyze::beginRun(Event& evt, Env& env)
   if (m_use_calib_db_ref) {
 
     // get run number
-    shared_ptr<EventId> eventId = evt.get();
+    boost::shared_ptr<EventId> eventId = evt.get();
     int run = 0;
     if (eventId.get()) {
       run = eventId->run();
@@ -710,8 +710,8 @@ bool Analyze::getIsOffFromOnOffKey(const std::string & moduleParameter, const st
 bool 
 Analyze::setBeamAndLaserStatusForEvent(bool &nobeam, bool &nolaser, Event &evt) 
 {
-  shared_ptr<Psana::EvrData::DataV4> evr4 = evt.get(Source("DetInfo(:Evr)"));
-  shared_ptr<Psana::EvrData::DataV3> evr3;
+  boost::shared_ptr<Psana::EvrData::DataV4> evr4 = evt.get(Source("DetInfo(:Evr)"));
+  boost::shared_ptr<Psana::EvrData::DataV3> evr3;
   if (not evr4) evr3 = evt.get(Source("DetInfo(:Evr)"));
   if (not(evr3 or evr4)) {
     MsgLog(name(), warning, name() << ": Could not fetch evr data - tried DataV3 and DataV4.");
@@ -760,7 +760,7 @@ Analyze::updateBeamStatusBasedOnIpm(bool &nobeam, Event &evt) {
   //  Beam is absent if not enough signal on the IPM detector
   //
   if (!m_ipm_get_key.empty()) {
-    shared_ptr<Psana::Lusi::IpmFexV1> ipm = evt.get(Source(m_ipm_get_key));
+    boost::shared_ptr<Psana::Lusi::IpmFexV1> ipm = evt.get(Source(m_ipm_get_key));
     if (ipm.get()) {
       MsgLog(name(), info, name() << ": ipm sum = " << ipm.get()->sum());
       nobeam |= ipm.get()->sum() < m_ipm_beam_threshold;
@@ -807,14 +807,14 @@ Analyze::event(Event& evt, Env& env)
   ndarray<const uint16_t,2> frameData;
 
   if (m_analyze_projections) {
-    shared_ptr<Psana::TimeTool::DataV2> tt = evt.get(m_get_key);
+    boost::shared_ptr<Psana::TimeTool::DataV2> tt = evt.get(m_get_key);
     if (tt.get()) {
       sig  = tt.get()->projected_signal();
       sb   = tt.get()->projected_sideband();
       ref  = tt.get()->projected_reference();
     }
     else {
-      shared_ptr<Psana::TimeTool::DataV1> tt = evt.get(m_get_key);
+      boost::shared_ptr<Psana::TimeTool::DataV1> tt = evt.get(m_get_key);
       if (tt.get()) {
         sig  = tt.get()->projected_signal();
         sb   = tt.get()->projected_sideband();
@@ -827,7 +827,7 @@ Analyze::event(Event& evt, Env& env)
     }
   }
   else {
-    shared_ptr<Psana::Camera::FrameV1> frame = evt.get(m_get_key);
+    boost::shared_ptr<Psana::Camera::FrameV1> frame = evt.get(m_get_key);
     if (!frame.get()) {
       MsgLog(name(), warning, name() << ": Could not fetch frame data");
       m_eventDump.returnReason(evt,"no_frame_data");
